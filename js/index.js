@@ -1,5 +1,10 @@
+document.oncontextmenu=function(){
+  return false;
+}//禁止右键菜单
+
 var div=document.getElementById("div");
 var img=document.createElement("img");
+
 var Data = {open:'open'};
 sendMessage(Data);
 
