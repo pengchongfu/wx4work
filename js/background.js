@@ -1,5 +1,5 @@
-var Data;//当前状态,可能为二维码,头像,消息列表,保存事务
-var wxSession;
+var Data;//当前状态,保存二维码,头像,消息列表等事务
+var wxSession;//保存登录信息
 
 function sendMessage(Data){
   chrome.runtime.sendMessage(JSON.stringify(Data),function(response){

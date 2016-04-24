@@ -14,7 +14,7 @@
       "38":"images/icon38.png"
     },
     "default_title":"wx4work",
-    "default_popup":"index.html"
+    "default_popup":"popup.html"
   },
   "background":{
     "scripts":[

@@ -22,6 +22,7 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
   sendMessage({clear:1});//通知后台已接收消息
   message=JSON.parse(message);
   if(message.list.length>0){
+    if(img.parentNode){img.parentNode.removeChild(img);}
     for(var i=messageRecieved.list.length,l=message.list.length;i<l;i++){
             
       var imgdiv_img=document.createElement('img');
@@ -38,7 +39,6 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
       var contentdiv_input=document.createElement('textarea');
       contentdiv_input.className="contentdiv_input";
       contentdiv_input.value=message.list[i].content;
-      
       var contentdiv=document.createElement('div');
       contentdiv.className="contentdiv";
       contentdiv.appendChild(contentdiv_input);
@@ -49,9 +49,7 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
       mesdiv.appendChild(userdiv);
       mesdiv.appendChild(contentdiv);
       
-      
-      //发送消息事件
-      //设置消息框的事件属性
+      //对消息框添加发送消息事件
       if(message.list[i].from==="me"){
         mesdiv.className="mesdiv_me";
         contentdiv_input.setAttribute("readonly","readonly");
@@ -76,13 +74,10 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
         contentdiv_input.onblur=function(){
           this.value=this.originvalue;
         }
-        
-        
-        
       }
       
-      
       div.appendChild(mesdiv);
+      div.scrollIntoView(false);
     }
   }
   else if(message.avatar){
