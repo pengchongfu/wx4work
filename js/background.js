@@ -1,4 +1,5 @@
-var Data = {};//当前状态,可能为二维码,头像,消息状态
+var Data;//当前状态,可能为二维码,头像,消息列表,保存事务
+var wxSession;
 
 function sendMessage(Data){
   chrome.runtime.sendMessage(JSON.stringify(Data),function(response){
@@ -6,15 +7,22 @@ function sendMessage(Data){
   });
 }
 
+run();
 chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
   message=JSON.parse(message);
-  if(message.open){sendMessage(Data);}
-  
+  if(message.clear){Data.unread=0;}
+  if(message.open){
+    sendMessage(Data);
+  }
+  if(message.msg){
+    sendMsg(message.msg.username,message.msg.content,wxSession);
+  }
+  Data.unread=0;
+  chrome.browserAction.setBadgeText({text: ''});
 });
 
-run();
-
 function run(){
+  Data={ewm:'',avatar:'',list:[],unread:0};
   getUuid().then(checkState).then(login).then(init).then(getContact).then(syncCheck);
 }
 
@@ -38,12 +46,12 @@ function request(method,url,body,callback){
 function getUuid(){
   return new Promise(function(resolve,reject){
     console.log('获取二维码');
-    var wxSession={};
+    wxSession={};
     var url = "https://login.weixin.qq.com/jslogin?appid=wx782c26e4c19acffb&redirect_uri=https%3A%2F%2Fwx.qq.com%2Fcgi-bin%2Fmmwebwx-bin%2Fwebwxnewloginpage&fun=new&lang=en_US&_="+Date.now();
     request("GET",url,null,function(body) {
       wxSession.uuid=body.substring(50,62);
       wxSession.tip=1;
-      Data={ewm:"https://login.weixin.qq.com/qrcode/"+wxSession.uuid};
+      Data.ewm="https://login.weixin.qq.com/qrcode/"+wxSession.uuid;
       sendMessage(Data);
       console.log("请扫描二维码");
       resolve(wxSession);
@@ -58,7 +66,7 @@ function checkState(wxSession){
       if(/window\.code=201/.test(body)){
         wxSession.tip=0;
         console.log("请确认登录");
-        Data={avatar:body.split("'")[1]};
+        Data.avatar=body.split("'")[1];
         sendMessage(Data);
         resolve(checkState(wxSession));
       }
@@ -120,7 +128,7 @@ function init(wxSession){
 
 function getContact(wxSession){
   return new Promise(function(resolve,reject){
-    var url=wxSession.e+'/cgi-bin/mmwebwx-bin/webwxgetcontact?lang=en_US&pass_ticket='+wxSession.BaseRequest.pass_ticket+'&skey='+wxSession.BaseRequest.skey+'&seq=0&r='+Date.now();
+    var url=wxSession.e+'/cgi-bin/mmwebwx-bin/webwxgetcontact?lang=en_US&pass_ticket='+wxSession.pass_ticket+'&skey='+wxSession.BaseRequest.skey+'&seq=0&r='+Date.now();
     request("GET",url,null,function(body){
       body=JSON.parse(body);
       wxSession.MemberList=body.MemberList.map(function(object){
@@ -128,6 +136,7 @@ function getContact(wxSession){
         member.UserName=object.UserName;
         member.RemarkName=object.RemarkName;
         member.NickName=object.NickName;
+        member.HeadImgUrl=object.HeadImgUrl;
         return member;
       });
       console.log("获取联系人列表成功");
@@ -186,7 +195,7 @@ function webwxsync(wxSession){
       }
       wxSession.synckey=body.SyncKey;
       
-      chrome.browserAction.setBadgeText({text: '100'});//新消息数目
+      
       if(body.AddMsgList.length>0){
         for(var i=0,l=body.AddMsgList.length;i<l;i++){
           if(body.AddMsgList[i].MsgType===1){
@@ -201,9 +210,11 @@ function webwxsync(wxSession){
 
 function receiveMsg(username,content,wxSession){
   var user='';
+  var HeadImgUrl='';
   for(var i in wxSession.MemberList){
     if(wxSession.MemberList[i].UserName===username){
       user=wxSession.MemberList[i].RemarkName?wxSession.MemberList[i].RemarkName:wxSession.MemberList[i].NickName;
+      HeadImgUrl=wxSession.e+wxSession.MemberList[i].HeadImgUrl;
       break;
     }
   }
@@ -213,117 +224,28 @@ function receiveMsg(username,content,wxSession){
   }
 
   console.log(user+" >> "+content);
+  Data.list.push({user:user,username:username,content:content,HeadImgUrl:HeadImgUrl});
+  Data.unread++;
+  chrome.browserAction.setBadgeText({text: String(Data.unread)});
+  sendMessage(Data);
 }
 
-// /*进入cli模式*/
-// function cli(wxSession){
-//   wxSession.userTalkking={
-//     user:'',
-//     username:''
-//   };
-//   console.log(chalk.red("用户不存在，请通过`!username`设置"));
-//   const rl=readline.createInterface({
-//     input:process.stdin,
-//     output:process.stdout,
-//     terminal:true,
-//   });
-//   rl.setPrompt(wxSession.userTalkking.user+" << ");
-//   rl.on('line',function(input){
-//     if(input==="!clear"){
-//       process.stdout.write('\u001B[2J\u001B[0;0f'),
-//       rl.prompt();
-//       return;
-//     }
-//     if(input==="!exit"){
-//       process.exit(0);
-//     }
-//     if(input===""){
-//       rl.prompt();
-//       return;
-//     }
-//     if(input==="!user"){
-//       if(!wxSession.userTalkking.user||!wxSession.userTalkking.username){
-//         console.log(chalk.red("用户不存在，请通过`!username`设置"));
-//       }
-//       else{
-//         console.log(chalk.blue("当前用户为 "+wxSession.userTalkking.user));
-//       }
-//       rl.prompt();
-//       return;
-//     }
-//     if(input[0]==="!"){
-//       var user=input.substr(1);
-//       var username='';
-//       for(var i=0,l=wxSession.MemberList.length;i<l;i++){
-//         if(wxSession.MemberList[i].RemarkName===user){
-//           username=wxSession.MemberList[i].UserName;
-//           break;
-//         }
-//       }
-//       if(!username){
-//         for(var i=0,l=wxSession.MemberList.length;i<l;i++){
-//           if(wxSession.MemberList[i].NickName===user){
-//             username=wxSession.MemberList[i].UserName;
-//             break;
-//           }
-//         }
-//       }
-      
-//       if(user===''||username===''){
-//         console.log(chalk.red("用户不存在，请通过`!username`设置"));
-//         rl.prompt();
-//         return;
-//       }
-//       wxSession.userTalkking.user=user;
-//       wxSession.userTalkking.username=username;
-//       console.log(chalk.blue("当前用户更换为 "+wxSession.userTalkking.user));
-//       rl.setPrompt(wxSession.userTalkking.user+" << ");
-//       rl.prompt();
-//     }
-//     else {
-//       if(wxSession.userTalkking.user||wxSession.userTalkking.username){
-//         sendMsg(input,wxSession);
-//       }
-//       else{
-//         console.log(chalk.red("用户不存在，请通过`!username`设置"));
-//       }
-//       rl.prompt();
-//     }
-//   });
-//   rl.prompt();
-//   wxSession.rl=rl;
-// }
-
-// /*发送消息到服务器*/
-// function sendMsg(msg,wxSession){
-//   var user=wxSession.userTalkking.user;
-//   var username=wxSession.userTalkking.username; 
-//   var msgId=(Date.now()+Math.random().toFixed(3)).replace('.','');
-//   var body={
-//     BaseRequest:wxSession.BaseRequest,
-//     Msg:{
-//       Type:1,
-//       Content:msg,
-//       FromUserName:wxSession.username,
-//       ToUserName:username,
-//       LocalId:msgId,
-//       ClientMsgId:msgId
-//     }
-//   }
-//   var options={
-//     baseUrl:wxSession.e,
-//     uri:"/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=en_US&pass_ticket="+wxSession.pass_ticket,
-//     method:"POST",
-//     jar:true,
-//     json:true,
-//     body:body
-//   }
-//   request(options,function(err,res,body){
-//     if(err||body.BaseResponse.Ret!==0){
-//       readline.clearLine(process.stdout,0);
-//       readline.cursorTo(process.stdout,0);
-//       console.log(chalk.red(user+" << "+msg));
-//       wxSession.rl.prompt(true);
-//     }
-//   });
-// }
+function sendMsg(username,msg,wxSession){
+  var msgId=(Date.now()+Math.random().toFixed(3)).replace('.','');
+  var body={
+    BaseRequest:wxSession.BaseRequest,
+    Msg:{
+      Type:1,
+      Content:msg,
+      FromUserName:wxSession.username,
+      ToUserName:username,
+      LocalId:msgId,
+      ClientMsgId:msgId
+    }
+  }
+  var url=wxSession.e+"/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=en_US&pass_ticket="+wxSession.pass_ticket;
+  request("POST",url,body,function(body){
+    Data.list.push({user:wxSession.nickname,username:wxSession.username,content:msg,HeadImgUrl:Data.avatar,from:"me"});
+    sendMessage(Data);
+  });
+}

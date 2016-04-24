@@ -8,11 +8,84 @@
       body{
         width:250px;
         height:500px;
+        font-size: 20px;
+        background: #eee;
       }
       img {
         width:250px;
         height:250px;
       }
+      .mesdiv,.mesdiv_me {
+        position: relative;
+        height:100px;
+        background: #eee;
+      }
+      .mesdiv .imgdiv {
+        display: inline-block;
+      }
+      .mesdiv .userdiv {
+        position: absolute;
+        top:0px;
+        left:100px;
+      }
+      .mesdiv .contentdiv {
+        position: absolute;
+        top:30px;
+        left:100px;
+      }
+      
+      .imgdiv {
+        height: 100px;
+        width: 100px;
+      }
+      .imgdiv_img {
+        width: 100px;
+        height: 100px;
+      }
+      
+      .userdiv {
+        height:30px;
+        width:60px;
+        display: inline-block;
+        background: #eee;
+      }
+      
+      .contentdiv {
+        height:50px;
+        width:150px;
+        display: inline-block;
+        background: #eee;
+      }
+      
+      .mesdiv_me .imgdiv {
+        position: absolute;
+        left:150px;
+      }      
+      .mesdiv_me .contentdiv {
+        position: absolute;
+        top:30px;
+        left:0px;
+      }
+      
+      .mesdiv_me .userdiv {
+        position: absolute;
+        top:0px;
+        left:90px;
+      }
+      
+      .contentdiv_input {
+        width:150px;
+        height:50px;
+        text-indent: 10px;
+        border-radius: 10px;
+        font-size: 15px;
+        background: #b2e281;
+      }
+      
+      ::-webkit-scrollbar-track-piece {background-color:#fff;}
+      ::-webkit-scrollbar{width:5px;}
+      ::-webkit-scrollbar-thumb{background:#eee;} 
+      
     </style>
   </head>
   <body>
