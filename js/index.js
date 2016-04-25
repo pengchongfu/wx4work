@@ -52,11 +52,13 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
       //对消息框添加发送消息事件
       if(message.list[i].from==="me"){
         mesdiv.className="mesdiv_me";
-        contentdiv_input.setAttribute("readonly","readonly");
+        contentdiv_input.readOnly=true;
       }
       else{
         contentdiv_input.username=message.list[i].username;
         contentdiv_input.originvalue=message.list[i].content;
+        contentdiv_input.readOnly=true;
+        
         contentdiv_input.onkeypress=function(e){
           if(e.keyCode!==13)return;
           if(this.value)sendMessage({msg:{
@@ -64,15 +66,18 @@ chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
             content:this.value
           }});
           this.value=this.originvalue;
+          this.readOnly=true;
           this.blur();
         }
         
-        contentdiv_input.onfocus=function(){
+        contentdiv_input.ondblclick=function(){
+          this.readOnly=false;
           this.value="";
         }
         
         contentdiv_input.onblur=function(){
           this.value=this.originvalue;
+          this.readOnly=true;
         }
       }
       
