@@ -1,28 +1,33 @@
-var Data;//当前状态,保存二维码,头像,消息列表等事务
+var Data;//当前状态,保存二维码,头像,联系人和消息列表等事务
 var wxSession;//保存登录信息
 
 function sendMessage(Data){
-  chrome.runtime.sendMessage(JSON.stringify(Data),function(response){
-    
-  });
+  chrome.runtime.sendMessage(JSON.stringify(Data),function(response){});
 }
 
 run();
+
 chrome.runtime.onMessage.addListener(function(message,sender,sendResponse){
   message=JSON.parse(message);
-  if(message.clear){Data.unread=0;}
-  if(message.open){
-    sendMessage(Data);
+  switch(message.action){
+    case 'open':
+      sendMessage(Data);
+      break;
+    case 'msg':
+      sendMsg(message.msg.username,message.msg.content,wxSession);
+      break;
+    case 'clear':
+      if(Data.list[message.username]){Data.list[message.username].unread=0;}
+      var tmp=Data.state;
+      Data.state=4;
+      sendMessage(Data);
+      Data.state=tmp;
+      setNotice();
+      break;
   }
-  if(message.msg){
-    sendMsg(message.msg.username,message.msg.content,wxSession);
-  }
-  Data.unread=0;
-  chrome.browserAction.setBadgeText({text: ''});
 });
 
 function run(){
-  Data={ewm:'',avatar:'',list:[],unread:0};
   getUuid().then(checkState).then(login).then(init).then(getContact).then(syncCheck);
 }
 
@@ -43,16 +48,18 @@ function request(method,url,body,callback){
   }
 }
 
+//0二维码，1等待确认，2已经登陆,3有新消息，4更新通知
 function getUuid(){
   return new Promise(function(resolve,reject){
     console.log('获取二维码');
+    Data={ewm:'',avatar:'',list:{},contact:[],state:0};
     wxSession={};
     var url = "https://login.weixin.qq.com/jslogin?appid=wx782c26e4c19acffb&redirect_uri=https%3A%2F%2Fwx.qq.com%2Fcgi-bin%2Fmmwebwx-bin%2Fwebwxnewloginpage&fun=new&lang=en_US&_="+Date.now();
     request("GET",url,null,function(body) {
       wxSession.uuid=body.substring(50,62);
       wxSession.tip=1;
       Data.ewm="https://login.weixin.qq.com/qrcode/"+wxSession.uuid;
-      sendMessage(Data);
+      sendMessage(Data);//发送
       console.log("请扫描二维码");
       resolve(wxSession);
     });
@@ -67,7 +74,8 @@ function checkState(wxSession){
         wxSession.tip=0;
         console.log("请确认登录");
         Data.avatar=body.split("'")[1];
-        sendMessage(Data);
+        Data.state=1;
+        sendMessage(Data);//发送
         resolve(checkState(wxSession));
       }
       else if(/window\.code=200/.test(body)){
@@ -131,14 +139,22 @@ function getContact(wxSession){
     var url=wxSession.e+'/cgi-bin/mmwebwx-bin/webwxgetcontact?lang=en_US&pass_ticket='+wxSession.pass_ticket+'&skey='+wxSession.BaseRequest.skey+'&seq=0&r='+Date.now();
     request("GET",url,null,function(body){
       body=JSON.parse(body);
+      body.MemberList=body.MemberList.filter(function(x){
+        return x.VerifyFlag===0;
+      });
       wxSession.MemberList=body.MemberList.map(function(object){
         var member={};
         member.UserName=object.UserName;
-        member.RemarkName=object.RemarkName;
-        member.NickName=object.NickName;
-        member.HeadImgUrl=object.HeadImgUrl;
+        object.RemarkName?member.Name=object.RemarkName:member.Name=object.NickName;
+        member.HeadImgUrl=wxSession.e+object.HeadImgUrl;
         return member;
       });
+      wxSession.MemberList.sort(function(a,b){
+        return a.Name.localeCompare(b.Name,'zh-Hans-CN');
+      });
+      Data.contact=wxSession.MemberList;
+      Data.state=2;
+      sendMessage(Data);
       console.log("获取联系人列表成功");
       notify(wxSession);//向服务器发送已登陆状态
       resolve(wxSession);
@@ -194,12 +210,11 @@ function webwxsync(wxSession){
         resolve(webwxsync(wxSession));
       }
       wxSession.synckey=body.SyncKey;
-      
-      
+
       if(body.AddMsgList.length>0){
         for(var i=0,l=body.AddMsgList.length;i<l;i++){
           if(body.AddMsgList[i].MsgType===1){
-            receiveMsg(body.AddMsgList[i].FromUserName,body.AddMsgList[i].Content,wxSession);
+            receiveMsg(body.AddMsgList[i].FromUserName,body.AddMsgList[i].ToUserName,body.AddMsgList[i].Content,wxSession);
           }
         }
       }
@@ -208,26 +223,28 @@ function webwxsync(wxSession){
   });
 }
 
-function receiveMsg(username,content,wxSession){
-  var user='';
-  var HeadImgUrl='';
-  for(var i in wxSession.MemberList){
-    if(wxSession.MemberList[i].UserName===username){
-      user=wxSession.MemberList[i].RemarkName?wxSession.MemberList[i].RemarkName:wxSession.MemberList[i].NickName;
-      HeadImgUrl=wxSession.e+wxSession.MemberList[i].HeadImgUrl;
-      break;
+function receiveMsg(fromusername,tousername,content,wxSession){
+  var contact=wxSession.MemberList.map(function(x){
+    return x.UserName;
+  });
+  
+  //排除群消息
+  if(!(fromusername in contact)&&(tousername in contact)){
+    return;
+  }
+  
+  if(fromusername===tousername){
+    saveMessage(Data,fromusername,content,0);//0代表我，1代表他人
+  }
+  else {
+    if(fromusername===wxSession.username){
+      saveMessage(Data,tousername,content,0);
+    }
+    if(fromusername!==wxSession.username){
+      saveMessage(Data,fromusername,content,1);
     }
   }
-  if(user===''){
-    user="微信群";
-    return;//屏蔽微信群消息，其实是因为不想再做微信群的消息收发了。。。
-  }
-
-  console.log(user+" >> "+content);
-  Data.list.push({user:user,username:username,content:content,HeadImgUrl:HeadImgUrl});
-  Data.unread++;
-  chrome.browserAction.setBadgeText({text: String(Data.unread)});
-  sendMessage(Data);
+  console.log(fromusername+'>>>'+tousername+' '+content);
 }
 
 function sendMsg(username,msg,wxSession){
@@ -245,7 +262,32 @@ function sendMsg(username,msg,wxSession){
   }
   var url=wxSession.e+"/cgi-bin/mmwebwx-bin/webwxsendmsg?lang=en_US&pass_ticket="+wxSession.pass_ticket;
   request("POST",url,body,function(body){
-    Data.list.push({user:wxSession.nickname,username:wxSession.username,content:msg,HeadImgUrl:Data.avatar,from:"me"});
-    sendMessage(Data);
+    saveMessage(Data,username,msg,0);
   });
+}
+
+function saveMessage(Data,username,content,from){
+  if(!Data.list[username]){
+    Data.list[username]={
+      array:[],
+      unread:0
+    };
+  }
+  Data.list[username].array.push({content:content,from:from});
+  if(from){
+    Data.list[username].unread+=1;
+  }
+  Data.state=3;
+  sendMessage(Data);//发送
+  setNotice();
+}
+
+function setNotice(){
+  for(var x in Data.list){
+    if(Data.list[x].unread!==0){
+      chrome.browserAction.setIcon({path:'images/icon.png'});
+      return;
+    }
+  }
+  chrome.browserAction.setIcon({path:'images/icon128.png'});
 }

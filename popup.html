@@ -1,16 +1,13 @@
 <html>
   <head>
+    <meta charset="utf-8" />
     <style>
-      html,body {
-        overflow-y: scroll;
-        overflow-x: hidden;
-      }
       * {
         margin: 0;
         padding: 0;
       }
       body {
-        width:255px;
+        width:260px;
         height:500px;
         font-size: 20px;
         background: #eee;
@@ -20,34 +17,129 @@
         height:250px;
       }
       
-      .mesdiv,.mesdiv_me {
+      #searchDiv {
+        height:40px;
         position: relative;
+      }
+      
+      #searchDiv input {
+        height:40px;
+        width:260px;
+        text-indent: 10px;
+        border-radius: 20px;
+        border-style: none;
+        font-size: 15px;
+        outline:none;
+      }
+      
+      #searchDiv button {
+        position: absolute;
+        padding: 0;
+        top:0px;
+        left:220px;
+        height:40px;        
+        background: white;
+        border: none;
+        color: #aaa;
+        display: inline-block;
+        cursor: pointer;
+        font-size: 20px;
+
+      }
+      
+      #contactDiv {
+        height:460px;
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+
+      #contactDiv::-webkit-scrollbar-track-piece {background-color:#fff;}
+      #contactDiv::-webkit-scrollbar{width:10px;}
+      #contactDiv::-webkit-scrollbar-thumb{background:#eee;}
+      
+      .contactItem {
+        position:relative;
+        height:80px;
+      }
+      
+      .contactItem img {
+        height: 80px;
+        width: 80px;
+      }
+      
+      .contactItem div {
+        position: absolute;
+        height:80px;
+        top:0px;
+        left:80px;
+      }
+      
+      .contactItem .svg {
+        position: absolute;
+        color: white;
+        top: -10px;
+        left: 70px;
+      }
+      
+      #backDiv {
+        height:40px;
+        background: #2e3238;
+        color: white;
+      }
+      
+      button {
+        background: #2e3238;
+        border: none;
+        color: white;
+        padding: 10px 10px;
+        display: inline-block;
+        cursor: pointer;
+        outline: none;
+      }
+      
+      #messageDiv {
+        height:360px;
+      }
+      
+      #sendDiv {
         height:100px;
       }
       
-      .imgdiv {
-        height: 100px;
-        width: 100px;
+      #sendDiv textarea {
+        height:100px;
+        width:260px;
+        text-indent: 10px;
+        border-radius: 20px;
+        border-style: none;
+        font-size: 15px;
+        outline:none;
+        resize: none;
       }
       
-      .userdiv {
-        height:30px;
-        width:60px;
+      #messageDiv {
+        overflow-y: scroll;
+        overflow-x: hidden;
+      }
+
+      #messageDiv::-webkit-scrollbar-track-piece {background-color:#fff;}
+      #messageDiv::-webkit-scrollbar{width:10px;}
+      #messageDiv::-webkit-scrollbar-thumb{background:#eee;}
+      
+      .messageItem {
+        position:relative;
+        height:80px;
       }
       
-      .contentdiv {
-        height:50px;
+      .messageItem img {
+        height: 80px;
+        width: 80px;
+      }
+      
+      .messageItem textarea {
+        position: absolute;
+        top:0px;
         width:150px;
-      }
-      
-      .imgdiv_img {
-        width: 100px;
-        height: 100px;
-      }
-      
-      .contentdiv_input {
-        width:150px;
-        height:50px;
+        height:60px;
         text-indent: 10px;
         border-radius: 10px;
         font-size: 15px;
@@ -55,45 +147,69 @@
         resize: none;
       }
       
-      .contentdiv_input::-webkit-scrollbar{display: none;}
-
-      .mesdiv .userdiv {
-        position: absolute;
-        top:0px;
-        left:100px;
-      }
-      .mesdiv .contentdiv {
-        position: absolute;
-        top:30px;
-        left:100px;
+      .messageItem textarea::-webkit-scrollbar{display: none;}
+      
+      .messageItem_me {
+        position:relative;
+        height:80px;
       }
       
-
-      .mesdiv_me .imgdiv {
+      .messageItem_me img {
         position: absolute;
-        left:150px;
-      }      
-      .mesdiv_me .contentdiv {
-        position: absolute;
-        top:30px;
-        left:0px;
+        left:170px;
+        height: 80px;
+        width: 80px;
       }
       
-      .mesdiv_me .userdiv {
+      .messageItem_me textarea {
         position: absolute;
-        top:0px;
-        left:90px;
+        left:20px;
+        width:150px;
+        height:60px;
+        text-indent: 10px;
+        border-radius: 10px;
+        font-size: 15px;
+        background: #b2e281;
+        resize: none;
       }
       
-
-      ::-webkit-scrollbar-track-piece {background-color:#fff;}
-      ::-webkit-scrollbar{width:5px;}
-      ::-webkit-scrollbar-thumb{background:#eee;} 
+      .messageItem_me textarea::-webkit-scrollbar{display: none;}
+      
+      hr {
+        border:0;
+        background: #eee;
+        height:10px;
+      }
       
     </style>
   </head>
   <body>
-    <div id="div"></div>
+    <div id="page0">
+      <img />
+    </div>
+    
+    <div id="page1">
+      <div id="searchDiv">
+        <input placeholder="搜索" />
+        <button>X</button>
+      </div>
+      <div id="contactDiv">
+        <div id="lastContactDiv"></div>
+        <hr />
+      </div>
+      <div id="suggestDiv"></div>
+    </div>
+    
+    <div id="page2">
+      <div id='backDiv'>
+        <button>返回</button>
+        <label></label>
+      </div>
+      <div id='messageDiv'></div>
+      <div id='sendDiv'>
+        <textarea placeholder="在此输入消息" ></textarea>
+      </div>
+    </div>
     <script src="js/index.js"></script>
   </body>
 </html>
