@@ -36,7 +36,12 @@ function request(method,url,body,callback){
   xhr.open(method,url,true);
   xhr.onreadystatechange = function(){
     if(xhr.readyState === 4){
-      callback(xhr.responseText);
+      if(xhr.status===200){
+        callback(xhr.responseText);
+      }
+      else{
+        callback(xhr.responseText,true);
+      }
     }
   }
   if(body){
@@ -199,7 +204,10 @@ function webwxsync(wxSession){
       SyncKey:wxSession.synckey,
     };
     var url=wxSession.e+'/cgi-bin/mmwebwx-bin/webwxsync?sid='+wxSession.BaseRequest.sid+'&skey='+wxSession.BaseRequest.skey+'&lang=en_US&pass_ticket=$'+wxSession.pass_ticket+'&rr='+~Date.now();
-    request("POST",url,body,function(body){
+    request("POST",url,body,function(body,err){
+      if(err){
+        resolve(webwxsync(wxSession));
+      }
       body=JSON.parse(body);
       if(body.BaseResponse.Ret===1101){
         console.log("微信已退出");
